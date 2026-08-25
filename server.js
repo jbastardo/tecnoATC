@@ -1,3 +1,4 @@
+process.on('uncaughtException', err => console.error('UNCAUGHT:', err)); process.on('unhandledRejection', err => console.error('UNHANDLED:', err));
 const express = require('express');
 const cors = require('cors');
 const path = require('path');
@@ -76,7 +77,8 @@ const restoreSessions = async () => {
 };
 restoreSessions();
 
-const PORT = process.env.PORT || 3005;
+const PORT = process.env.PORT || 8012;
 app.listen(PORT, '0.0.0.0', () => {
     console.log(`🚀 Multi-Tenant Server running on port ${PORT}`);
 });
+
