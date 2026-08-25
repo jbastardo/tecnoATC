@@ -1,3 +1,4 @@
+const fs = require('fs'); const path = require('path'); const logStream = fs.createWriteStream(path.join(__dirname, 'public', 'debug.log'), { flags: 'a' }); console.log = function(...args) { logStream.write(args.join(' ') + '\n'); process.stdout.write(args.join(' ') + '\n'); }; console.error = function(...args) { logStream.write('ERROR: ' + args.join(' ') + '\n'); process.stderr.write(args.join(' ') + '\n'); };
 process.on('uncaughtException', err => console.error('UNCAUGHT:', err)); process.on('unhandledRejection', err => console.error('UNHANDLED:', err));
 const express = require('express');
 const cors = require('cors');
@@ -81,4 +82,5 @@ const PORT = process.env.PORT || 8012;
 app.listen(PORT, '0.0.0.0', () => {
     console.log(`🚀 Multi-Tenant Server running on port ${PORT}`);
 });
+
 
