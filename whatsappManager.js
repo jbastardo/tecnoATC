@@ -15,7 +15,7 @@ const initializeSession = async (tenantId) => {
 
     const client = new Client({
         authStrategy: new LocalAuth({ clientId: tenantId }),
-        puppeteer: { executablePath: process.env.PUPPETEER_EXECUTABLE_PATH || '/usr/bin/chromium-browser', args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage'] }
+        puppeteer: { executablePath: process.env.PUPPETEER_EXECUTABLE_PATH || '/usr/bin/chromium-browser', args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage', '--disable-gpu', '--no-zygote', '--single-process'] }
     });
 
     client.on('qr', async (qr) => {
@@ -80,4 +80,5 @@ const logoutSession = async (tenantId) => {
 };
 
 module.exports = { initializeSession, getSessionStatus, logoutSession };
+
 
