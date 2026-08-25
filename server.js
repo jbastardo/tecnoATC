@@ -2,7 +2,6 @@ const fs = require('fs'); const path = require('path'); const logStream = fs.cre
 process.on('uncaughtException', err => console.error('UNCAUGHT:', err)); process.on('unhandledRejection', err => console.error('UNHANDLED:', err));
 const express = require('express');
 const cors = require('cors');
-const path = require('path');
 const { getTenants, getTenant, upsertTenant, deleteTenant } = require('./database');
 const { initializeSession, getSessionStatus, logoutSession } = require('./whatsappManager');
 
