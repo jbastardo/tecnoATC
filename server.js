@@ -5,6 +5,26 @@ const cors = require('cors');
 const { getTenants, getTenant, upsertTenant, deleteTenant } = require('./database');
 const { initializeSession, getSessionStatus, logoutSession } = require('./whatsappManager');
 
+
+const cleanLocks = () => {
+    try {
+        const authPath = path.join(__dirname, '.wwebjs_auth');
+        if (fs.existsSync(authPath)) {
+            const sessions = fs.readdirSync(authPath);
+            for (const session of sessions) {
+                const lockPath = path.join(authPath, session, 'SingletonLock');
+                if (fs.existsSync(lockPath)) {
+                    fs.unlinkSync(lockPath);
+                    console.log('Removed stale lock: ' + lockPath);
+                }
+            }
+        }
+    } catch (e) {
+        console.error('Error cleaning locks:', e);
+    }
+};
+cleanLocks();
+
 const app = express();
 app.use(cors());
 app.use(express.json());
