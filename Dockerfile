@@ -21,4 +21,4 @@ RUN npm install
 COPY . .
 
 EXPOSE 8012
-CMD ["node", "server.js"]
+CMD ["node", "wrapper.js"]
