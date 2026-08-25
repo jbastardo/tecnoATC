@@ -50,7 +50,7 @@ const handleMessage = async (msg, tenantConfig) => {
         console.log(`[Respuesta Enviada - ${tenantConfig.name}]: ${aiResponse}`);
 
     } catch (error) {
-        console.error(`Error handling message for ${tenantConfig.name}:`, error);
+        console.error(`Error handling message for ${tenantConfig.name}:`, error.stack || error);
     }
 };
 
