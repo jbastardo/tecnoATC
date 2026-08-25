@@ -13,10 +13,11 @@ const handleMessage = async (msg, tenantConfig) => {
         if (msg.from === 'status@broadcast' || msg.id.fromMe) return;
 
         if (!msg.body || typeof msg.body !== 'string') return;
-        const chat = await msg.getChat();
-        if (chat.isGroup) return;
+        // getChat() disabled due to WA Web bug
+        // const chat = await msg.getChat();
+        if (msg.from.endsWith('@g.us')) return;
 
-        const chatId = `${tenantConfig.id}_${chat.id._serialized}`;
+        const chatId = \"\_\\";
 
         if (msg.body.trim().toLowerCase() === '/resumir') {
             pausedChats.delete(chatId);
@@ -31,13 +32,13 @@ const handleMessage = async (msg, tenantConfig) => {
 
         console.log(`[Mensaje Entrante - ${tenantConfig.name}] de ${msg.from}: ${msg.body}`);
 
-        await simulateTypingDelay(chat);
+        // await simulateTypingDelay(chat);
 
         const context = "Aún no tenemos base de datos de contexto.";
         
         const aiResponse = await generateResponse(msg.body, tenantConfig, context);
 
-        await chat.clearState();
+        // await chat.clearState();
 
         if (aiResponse.includes('[REQUIERE_HUMANO]')) {
             pausedChats.set(chatId, true);
