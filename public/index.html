@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>tecnoATC - Panel de Administración</title>
+    <link rel="stylesheet" href="style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div class="app-container">
+        <header>
+            <h1>tecnoATC</h1>
+            <p>Plataforma Multi-Cliente de IA para WhatsApp</p>
+        </header>
+
+        <main>
+            <div class="sidebar">
+                <button id="newTenantBtn" class="primary-btn">+ Nuevo Cliente</button>
+                <ul id="tenantList">
+                    <!-- Clientes cargados dinámicamente -->
+                </ul>
+            </div>
+
+            <div class="content" id="tenantContent" style="display: none;">
+                <div class="panel glass-panel">
+                    <div class="panel-header">
+                        <h2 id="tName">Nombre del Cliente</h2>
+                        <span id="tStatus" class="status-badge">Desconectado</span>
+                    </div>
+
+                    <div class="layout-grid">
+                        <div class="config-section">
+                            <h3>Configuración de IA</h3>
+                            <form id="configForm">
+                                <input type="hidden" id="fId">
+                                <div class="form-group">
+                                    <label>Nombre del Cliente</label>
+                                    <input type="text" id="fName" required>
+                                </div>
+                                <div class="form-group">
+                                    <label>Gemini API Key</label>
+                                    <input type="password" id="fApiKey" required placeholder="AIzaSy...">
+                                </div>
+                                <div class="form-group">
+                                    <label>Prompt del Sistema (Personalidad)</label>
+                                    <textarea id="fPrompt" rows="5" required placeholder="Eres un asistente amigable..."></textarea>
+                                </div>
+                                <div class="form-group checkbox-group">
+                                    <input type="checkbox" id="fActive">
+                                    <label for="fActive">Bot Activado</label>
+                                </div>
+                                <div class="actions">
+                                    <button type="submit" class="save-btn">Guardar Configuración</button>
+                                    <button type="button" class="danger-btn" id="deleteBtn">Eliminar Cliente</button>
+                                </div>
+                            </form>
+                        </div>
+
+                        <div class="whatsapp-section">
+                            <h3>Conexión WhatsApp</h3>
+                            <div class="qr-container" id="qrContainer">
+                                <p class="text-muted">Inicia la sesión para ver el QR</p>
+                            </div>
+                            <div class="wa-actions">
+                                <button id="startSessionBtn" class="action-btn">Iniciar Sesión / Generar QR</button>
+                                <button id="logoutSessionBtn" class="danger-btn">Cerrar Sesión (Logout)</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="empty-state" id="emptyState">
+                <p>Selecciona o crea un cliente para comenzar</p>
+            </div>
+        </main>
+    </div>
+    <script src="script.js"></script>
+</body>
+</html>
