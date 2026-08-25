@@ -17,7 +17,7 @@ const handleMessage = async (msg, tenantConfig) => {
         // const chat = await msg.getChat();
         if (msg.from.endsWith('@g.us')) return;
 
-        const chatId = \"\_\\";
+        const chatId = `${tenantConfig.id}_${msg.from}`;
 
         if (msg.body.trim().toLowerCase() === '/resumir') {
             pausedChats.delete(chatId);
