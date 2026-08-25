@@ -12,6 +12,7 @@ const handleMessage = async (msg, tenantConfig) => {
     try {
         if (msg.from === 'status@broadcast' || msg.id.fromMe) return;
 
+        if (!msg.body || typeof msg.body !== 'string') return;
         const chat = await msg.getChat();
         if (chat.isGroup) return;
 
