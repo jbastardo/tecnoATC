@@ -1,7 +1,7 @@
 const { Pool } = require('pg');
 
 const pool = new Pool({
-  connectionString: process.env.DATABASE_URL
+  connectionString: 'postgresql://postgres:hW6z7NaYL6R4pis9xGlWdxKPKXU4ZJrmhrdjvrDJZhpCDOvavS1izt4MDrFtGmc9@192.168.1.32:5535/postgres'
 });
 
 const initDB = async () => {
@@ -70,3 +70,4 @@ const deleteTenant = async (id) => {
 };
 
 module.exports = { pool, getTenants, getTenant, upsertTenant, deleteTenant };
+
