@@ -15,7 +15,7 @@ const initializeSession = async (tenantId) => {
 
     const fs = require('fs');
     const path = require('path');
-    const authPath = path.join(__dirname, '.wwebjs_auth', `session-$tenantId`);
+    const authPath = path.join(__dirname, '.wwebjs_auth', `session-${tenantId}`);
     try {
         require('child_process').execSync('find ' + authPath + ' -name "Singleton*" -delete');
     } catch(e) {}
@@ -87,6 +87,7 @@ const logoutSession = async (tenantId) => {
 };
 
 module.exports = { initializeSession, getSessionStatus, logoutSession };
+
 
 
 
