@@ -13,8 +13,11 @@ ${context}
         
         const userParts = [];
         if (mediaData) userParts.push(mediaData);
-        if (prompt) userParts.push({ text: prompt });
-        if (userParts.length === 0) userParts.push({ text: "El usuario envió una imagen." });
+        if (prompt) {
+            userParts.push({ text: prompt });
+        } else {
+            userParts.push({ text: "El usuario envió una imagen." });
+        }
 
         const response = await ai.models.generateContent({
             model: 'gemini-1.5-flash',
