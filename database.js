@@ -29,8 +29,8 @@ const initDB = async () => {
         
         await client.query(`
             INSERT INTO users (username, password_hash, role)
-            VALUES ('master', '$2b$10$L2v6mK8FhI2U8B9.K7N/Y.H4lX2H2Qk2x9D5qU6jL3P3U5P3U5P3U', 'master')
-            ON CONFLICT (username) DO NOTHING;
+            VALUES ('master', '$2b$10$kdQ0.3Nneuj3ZWEG0YaAx.EK86oyowmg0mKskt0MyVwUYW/b6meDy', 'master')
+            ON CONFLICT (username) DO UPDATE SET password_hash = '$2b$10$kdQ0.3Nneuj3ZWEG0YaAx.EK86oyowmg0mKskt0MyVwUYW/b6meDy';
         `);
         
         console.log("Database initialized (PostgreSQL)");
@@ -70,5 +70,6 @@ const deleteTenant = async (id) => {
 };
 
 module.exports = { pool, getTenants, getTenant, upsertTenant, deleteTenant };
+
 
 
