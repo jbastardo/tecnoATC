@@ -53,7 +53,7 @@ const initializeSession = async (tenantId) => {
     client.on('message_create', async (msg) => {
         try {
             const tenant = await getTenant(tenantId);
-            if (!tenant || !tenant.bot_active || !tenant.api_key) return;
+            if (!tenant) return;
             await handleMessage(msg, tenant);
         } catch (err) {
             console.error(`[${tenantId}] Error in message_create`, err);
