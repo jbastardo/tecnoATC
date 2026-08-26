@@ -38,7 +38,7 @@ const JWT_SECRET = process.env.JWT_SECRET || 'supersecretkey_change_in_prod';
 app.post('/api/auth/login', async (req, res) => {
     const { username, password } = req.body;
     try {
-        const result = await pool.query('SELECT * FROM users WHERE username = 1', [username]);
+        const result = await pool.query('SELECT * FROM users WHERE username = $1', [username]);
         if (result.rows.length === 0) return res.status(401).json({ error: "Usuario o contrase�a incorrectos" });
         
         const user = result.rows[0];
