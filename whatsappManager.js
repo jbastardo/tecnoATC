@@ -13,6 +13,19 @@ const initializeSession = async (tenantId) => {
     const sessionData = { qr: null, status: 'INITIALIZING', client: null };
     sessions.set(tenantId, sessionData);
 
+    const authPath = path.join(__dirname, \'.wwebjs_auth\', \session-\);
+    try {
+        const cleanRecursive = (dir) => {
+            if (!fs.existsSync(dir)) return;
+            for (const f of fs.readdirSync(dir)) {
+                const full = path.join(dir, f);
+                if (fs.statSync(full).isDirectory()) cleanRecursive(full);
+                else if (f.startsWith(\'Singleton\')) fs.unlinkSync(full);
+            }
+        };
+        cleanRecursive(authPath);
+    } catch(e) {}
+
     const client = new Client({
         authStrategy: new LocalAuth({ clientId: tenantId }),
         puppeteer: { executablePath: process.env.PUPPETEER_EXECUTABLE_PATH || '/usr/bin/chromium-browser', args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage', '--disable-gpu', '--no-zygote', '--single-process'] }
