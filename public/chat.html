@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chat Panel - OnProtec AI</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Inter', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        body { background-color: #f0f2f5; height: 100vh; display: flex; flex-direction: column; }
+        .header { background: #1a73e8; color: white; padding: 15px 30px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 2px 4px rgba(0,0,0,0.1); z-index: 10; }
+        .header h1 { font-size: 20px; margin: 0; }
+        .btn-logout { background: transparent; border: 1px solid white; color: white; padding: 8px 16px; border-radius: 4px; cursor: pointer; transition: 0.2s; }
+        .btn-logout:hover { background: rgba(255,255,255,0.1); }
+        
+        .main-container { display: flex; flex: 1; overflow: hidden; background: white; margin: 0; }
+        
+        .sidebar { width: 300px; border-right: 1px solid #ddd; background: #fff; display: flex; flex-direction: column; }
+        .sidebar-header { padding: 15px; border-bottom: 1px solid #ddd; background: #f8f9fa; font-weight: 600; color: #333; }
+        .contact-list { flex: 1; overflow-y: auto; }
+        .contact-item { padding: 15px; border-bottom: 1px solid #eee; cursor: pointer; display: flex; align-items: center; transition: background 0.2s; }
+        .contact-item:hover { background: #f5f5f5; }
+        .contact-item.active { background: #e8f0fe; border-left: 4px solid #1a73e8; padding-left: 11px; }
+        .contact-avatar { width: 40px; height: 40px; border-radius: 50%; background: #ccc; margin-right: 15px; display: flex; justify-content: center; align-items: center; color: white; font-weight: bold; }
+        .contact-info { flex: 1; overflow: hidden; }
+        .contact-name { font-weight: 600; color: #333; margin-bottom: 5px; white-space: nowrap; text-overflow: ellipsis; overflow: hidden; }
+        .contact-preview { font-size: 13px; color: #777; white-space: nowrap; text-overflow: ellipsis; overflow: hidden; }
+        
+        .chat-area { flex: 1; display: flex; flex-direction: column; background: #efeae2; position: relative; }
+        .chat-header { padding: 15px 20px; background: #fff; border-bottom: 1px solid #ddd; display: flex; align-items: center; justify-content: space-between; }
+        .chat-header-info { display: flex; align-items: center; }
+        .chat-header h2 { font-size: 18px; margin-left: 15px; color: #333; }
+        
+        .ai-status { display: flex; align-items: center; font-size: 14px; font-weight: 500; }
+        .ai-indicator { width: 10px; height: 10px; border-radius: 50%; margin-right: 8px; }
+        .ai-active { background: #28a745; }
+        .ai-inactive { background: #dc3545; }
+        
+        .messages-container { flex: 1; overflow-y: auto; padding: 20px; display: flex; flex-direction: column; gap: 10px; }
+        .message { max-width: 70%; padding: 10px 15px; border-radius: 12px; position: relative; box-shadow: 0 1px 2px rgba(0,0,0,0.1); font-size: 14px; line-height: 1.4; }
+        .message-in { align-self: flex-start; background: #fff; border-top-left-radius: 0; }
+        .message-out { align-self: flex-end; background: #dcf8c6; border-top-right-radius: 0; }
+        .message-time { font-size: 10px; color: #999; text-align: right; margin-top: 5px; }
+        
+        .input-area { padding: 15px 20px; background: #f0f0f0; display: flex; align-items: center; gap: 10px; }
+        .input-area input { flex: 1; padding: 12px 15px; border: none; border-radius: 20px; font-size: 15px; outline: none; }
+        .btn-send { background: #1a73e8; color: white; border: none; width: 40px; height: 40px; border-radius: 50%; cursor: pointer; display: flex; justify-content: center; align-items: center; transition: 0.2s; }
+        .btn-send:hover { background: #1557b0; }
+        
+        .empty-state { display: flex; flex: 1; justify-content: center; align-items: center; flex-direction: column; color: #888; text-align: center; }
+        .empty-state h3 { margin-bottom: 10px; color: #555; }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>OnProtec AI - Chat Panel</h1>
+        <div>
+            <span style="margin-right: 20px; font-size: 14px;" id="tenantNameDisplay"></span>
+            <button class="btn-logout" onclick="logout()">Cerrar Sesión</button>
+        </div>
+    </div>
+
+    <div class="main-container">
+        <div class="sidebar">
+            <div class="sidebar-header">
+                Conversaciones
+            </div>
+            <div class="contact-list" id="contactList">
+                <div style="padding: 20px; text-align: center; color: #888;">Cargando chats...</div>
+            </div>
+        </div>
+        
+        <div class="chat-area" id="chatArea">
+            <div class="empty-state" id="emptyState">
+                <h3>Bienvenido a tu panel de Chat</h3>
+                <p>Selecciona una conversación a la izquierda para comenzar o intervenir.</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const token = localStorage.getItem('token');
+        const role = localStorage.getItem('role');
+        const tenantId = localStorage.getItem('tenantId');
+        
+        if (!token || role !== 'tenant') {
+            window.location.href = '/';
+        }
+
+        const api = async (url, options = {}) => {
+            options.headers = {
+                ...options.headers,
+                'Authorization': `Bearer ${token}`
+            };
+            const res = await fetch(url, options);
+            if (res.status === 401 || res.status === 403) {
+                logout();
+            }
+            return res.json();
+        };
+
+        function logout() {
+            localStorage.removeItem('token');
+            localStorage.removeItem('role');
+            localStorage.removeItem('tenantId');
+            window.location.href = '/';
+        }
+
+        let allMessages = [];
+        let activeContact = null;
+        let lastFetch = 0;
+
+        async function fetchMessages() {
+            try {
+                const msgs = await api('/api/messages?tenantId=' + tenantId);
+                allMessages = msgs;
+                renderContacts();
+                if (activeContact) {
+                    renderChat(activeContact);
+                }
+            } catch (err) {
+                console.error(err);
+            }
+        }
+
+        function getContacts() {
+            const contactMap = new Map();
+            allMessages.forEach(m => {
+                const number = m.is_from_me ? m.to_number : m.from_number;
+                const contactId = number.split('@')[0];
+                if (!contactMap.has(contactId) || new Date(m.created_at) > new Date(contactMap.get(contactId).lastMsg.created_at)) {
+                    contactMap.set(contactId, { id: contactId, lastMsg: m });
+                }
+            });
+            return Array.from(contactMap.values()).sort((a, b) => new Date(b.lastMsg.created_at) - new Date(a.lastMsg.created_at));
+        }
+
+        function renderContacts() {
+            const list = document.getElementById('contactList');
+            const contacts = getContacts();
+            
+            if (contacts.length === 0) {
+                list.innerHTML = '<div style="padding: 20px; text-align: center; color: #888;">No hay mensajes aún.</div>';
+                return;
+            }
+
+            list.innerHTML = '';
+            contacts.forEach(c => {
+                const div = document.createElement('div');
+                div.className = 'contact-item' + (activeContact === c.id ? ' active' : '');
+                div.onclick = () => selectContact(c.id);
+                
+                const isFromMe = c.lastMsg.is_from_me;
+                const preview = (isFromMe ? 'Tú: ' : '') + (c.lastMsg.body.substring(0, 30) + (c.lastMsg.body.length > 30 ? '...' : ''));
+                
+                const date = new Date(c.lastMsg.created_at);
+                const timeStr = date.getHours().toString().padStart(2, '0') + ':' + date.getMinutes().toString().padStart(2, '0');
+
+                div.innerHTML = `
+                    <div class="contact-avatar">${c.id.substring(0, 2)}</div>
+                    <div class="contact-info">
+                        <div style="display: flex; justify-content: space-between;">
+                            <div class="contact-name">+${c.id}</div>
+                            <div style="font-size: 11px; color: #999;">${timeStr}</div>
+                        </div>
+                        <div class="contact-preview">${preview}</div>
+                    </div>
+                `;
+                list.appendChild(div);
+            });
+        }
+
+        function selectContact(id) {
+            activeContact = id;
+            renderContacts(); // update active class
+            renderChat(id);
+        }
+
+        function renderChat(id) {
+            const chatArea = document.getElementById('chatArea');
+            const messages = allMessages.filter(m => (m.is_from_me ? m.to_number : m.from_number).split('@')[0] === id);
+            
+            let html = `
+                <div class="chat-header">
+                    <div class="chat-header-info">
+                        <div class="contact-avatar" style="width: 35px; height: 35px;">${id.substring(0,2)}</div>
+                        <h2>+${id}</h2>
+                    </div>
+                    <div class="ai-status">
+                        <span style="color: #666; font-size: 12px; margin-right: 10px;">(Si respondes manualmente, la IA se pausará)</span>
+                    </div>
+                </div>
+                <div class="messages-container" id="messagesContainer">
+            `;
+            
+            messages.forEach(m => {
+                const date = new Date(m.created_at);
+                const timeStr = date.getHours().toString().padStart(2, '0') + ':' + date.getMinutes().toString().padStart(2, '0');
+                const msgClass = m.is_from_me ? 'message-out' : 'message-in';
+                
+                html += `
+                    <div class="message ${msgClass}">
+                        <div>${m.body.replace(/\n/g, '<br>')}</div>
+                        <div class="message-time">${timeStr}</div>
+                    </div>
+                `;
+            });
+            
+            html += `
+                </div>
+                <form class="input-area" id="replyForm" onsubmit="sendReply(event)">
+                    <input type="text" id="replyInput" placeholder="Escribe un mensaje..." required autocomplete="off">
+                    <button type="submit" class="btn-send">
+                        <svg viewBox="0 0 24 24" width="20" height="20" fill="white"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"></path></svg>
+                    </button>
+                </form>
+            `;
+            
+            chatArea.innerHTML = html;
+            const container = document.getElementById('messagesContainer');
+            container.scrollTop = container.scrollHeight;
+        }
+
+        async function sendReply(e) {
+            e.preventDefault();
+            if (!activeContact) return;
+            const input = document.getElementById('replyInput');
+            const body = input.value.trim();
+            if (!body) return;
+            
+            input.value = '';
+            
+            // Add optimistic message
+            const tempMsg = {
+                id: 'temp-' + Date.now(),
+                tenant_id: tenantId,
+                from_number: 'bot',
+                to_number: activeContact + '@c.us',
+                is_from_me: true,
+                body: body,
+                created_at: new Date().toISOString()
+            };
+            allMessages.push(tempMsg);
+            renderChat(activeContact);
+            renderContacts();
+
+            try {
+                await api('/api/messages/reply', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ tenantId: tenantId, toNumber: activeContact, body: body })
+                });
+                await fetchMessages();
+            } catch(err) {
+                console.error(err);
+                alert("Error al enviar mensaje");
+            }
+        }
+
+        // Poll every 3 seconds
+        fetchMessages();
+        setInterval(fetchMessages, 3000);
+    </script>
+</body>
+</html>

@@ -2,9 +2,8 @@ const fs = require('fs'); const path = require('path'); const logStream = fs.cre
 process.on('uncaughtException', err => console.error('UNCAUGHT:', err)); process.on('unhandledRejection', err => console.error('UNHANDLED:', err));
 const express = require('express');
 const cors = require('cors');
-const { getTenants, getTenant, upsertTenant, deleteTenant } = require('./database');
-const { initializeSession, getSessionStatus, logoutSession } = require('./whatsappManager');
-
+const { getTenants, getTenant, upsertTenant, deleteTenant, setBotActive, getMessages, pool } = require('./database');
+const { initializeSession, getSessionStatus, logoutSession, sendMessageToNumber } = require('./whatsappManager');
 
 const cleanLocks = () => {
     try {
@@ -31,7 +30,6 @@ app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcrypt');
-const { pool } = require('./database');
 
 const JWT_SECRET = process.env.JWT_SECRET || 'supersecretkey_change_in_prod';
 
@@ -45,8 +43,15 @@ app.post('/api/auth/login', async (req, res) => {
         const validPassword = await bcrypt.compare(password, user.password_hash);
         if (!validPassword) return res.status(401).json({ error: "Usuario o contrase�a incorrectos" });
         
-        const token = jwt.sign({ username: user.username, role: user.role }, JWT_SECRET, { expiresIn: '24h' });
-        res.json({ token, role: user.role });
+        // Also get tenant id if role is tenant
+        let tenantId = null;
+        if (user.role === 'tenant') {
+            const tRes = await pool.query('SELECT id FROM tenants WHERE user_id = $1', [user.id]);
+            if (tRes.rows.length > 0) tenantId = tRes.rows[0].id;
+        }
+
+        const token = jwt.sign({ username: user.username, role: user.role, tenantId }, JWT_SECRET, { expiresIn: '24h' });
+        res.json({ token, role: user.role, tenantId });
     } catch (err) {
         console.error('Login error:', err);
         res.status(500).json({ error: "Error interno del servidor" });
@@ -65,10 +70,9 @@ const authenticateToken = (req, res, next) => {
     });
 };
 
-// Protect tenant routes
 app.use('/api/tenants', authenticateToken);
 app.use('/api/sessions', authenticateToken);
-
+app.use('/api/messages', authenticateToken);
 
 app.get('/api/tenants', async (req, res) => {
     try {
@@ -85,11 +89,18 @@ app.get('/api/tenants', async (req, res) => {
 
 app.post('/api/tenants', async (req, res) => {
     try {
-        const { id, name, api_key, system_prompt, bot_active } = req.body;
+        const { id, name, api_key, system_prompt, bot_active, username, password } = req.body;
         const tenantId = id || require('crypto').randomUUID();
-        await upsertTenant({ id: tenantId, name, api_key, system_prompt, bot_active });
+        
+        let password_hash = null;
+        if (username && password) {
+            password_hash = await bcrypt.hash(password, 10);
+        }
+
+        await upsertTenant({ id: tenantId, name, api_key, system_prompt, bot_active, username, password_hash });
         res.json({ id: tenantId, success: true });
     } catch (err) {
+        console.error('Error in /api/tenants:', err);
         res.status(500).json({ error: err.message });
     }
 });
@@ -100,6 +111,52 @@ app.delete('/api/tenants/:id', async (req, res) => {
         await deleteTenant(req.params.id);
         res.json({ success: true });
     } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+app.post('/api/tenants/:id/toggle-bot', async (req, res) => {
+    try {
+        const { active } = req.body;
+        await setBotActive(req.params.id, active);
+        res.json({ success: true });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+app.get('/api/messages', async (req, res) => {
+    try {
+        // Tenant can only see their own messages. Master can specify ?tenantId=...
+        const tenantId = req.user.role === 'tenant' ? req.user.tenantId : req.query.tenantId;
+        if (!tenantId) return res.status(400).json({ error: 'Tenant ID required' });
+        const messages = await getMessages(tenantId);
+        res.json(messages);
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+app.post('/api/messages/reply', async (req, res) => {
+    try {
+        const { toNumber, body } = req.body;
+        const tenantId = req.user.role === 'tenant' ? req.user.tenantId : req.body.tenantId;
+        if (!tenantId) return res.status(400).json({ error: 'Tenant ID required' });
+        
+        await sendMessageToNumber(tenantId, toNumber, body);
+        
+        // Save the manual reply to DB
+        const { saveMessage } = require('./database');
+        await saveMessage(tenantId, 'bot', toNumber, true, body);
+
+        // Pause the AI chat so they don't fight
+        const { pausedChats } = require('./messageHandler');
+        pausedChats.set(`${tenantId}_${toNumber}@c.us`, true);
+        pausedChats.set(`${tenantId}_${toNumber}`, true);
+
+        res.json({ success: true });
+    } catch (err) {
+        console.error('Reply error:', err);
         res.status(500).json({ error: err.message });
     }
 });
@@ -130,17 +187,19 @@ app.post('/api/sessions/logout/:id', async (req, res) => {
 });
 
 const restoreSessions = async () => {
-    const tenants = await getTenants();
-    tenants.forEach(tenant => {
-        initializeSession(tenant.id).catch(console.error);
-    });
+    try {
+        const tenants = await getTenants();
+        tenants.forEach(tenant => {
+            initializeSession(tenant.id).catch(console.error);
+        });
+    } catch(e) {
+        console.error("Could not restore sessions", e);
+    }
 };
-restoreSessions();
+// Small delay to let DB init
+setTimeout(restoreSessions, 2000);
 
 const PORT = process.env.PORT || 8012;
 app.listen(PORT, '0.0.0.0', () => {
     console.log(`🚀 Multi-Tenant Server running on port ${PORT}`);
 });
-
-
-

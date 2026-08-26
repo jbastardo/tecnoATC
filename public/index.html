@@ -31,7 +31,7 @@
         const token = localStorage.getItem('token');
         const role = localStorage.getItem('role');
         if (token) {
-            window.location.href = role === 'master' ? '/dashboard.html' : '/tenant.html';
+            window.location.href = role === 'master' ? '/dashboard.html' : '/chat.html';
         }
 
         document.getElementById('loginForm').addEventListener('submit', async (e) => {
@@ -50,7 +50,8 @@
                 if (res.ok) {
                     localStorage.setItem('token', data.token);
                     localStorage.setItem('role', data.role);
-                    window.location.href = data.role === 'master' ? '/dashboard.html' : '/tenant.html';
+                    if (data.tenantId) localStorage.setItem('tenantId', data.tenantId);
+                    window.location.href = data.role === 'master' ? '/dashboard.html' : '/chat.html';
                 } else {
                     const errEl = document.getElementById('errorMsg');
                     errEl.innerText = data.error || 'Error de autenticación';

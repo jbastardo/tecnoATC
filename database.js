@@ -19,7 +19,7 @@ const initDB = async () => {
         await client.query(`
             CREATE TABLE IF NOT EXISTS tenants (
                 id VARCHAR(255) PRIMARY KEY,
-                user_id INTEGER REFERENCES users(id),
+                user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
                 name VARCHAR(255),
                 api_key VARCHAR(255),
                 system_prompt TEXT,
@@ -27,6 +27,18 @@ const initDB = async () => {
             );
         `);
         
+        await client.query(`
+            CREATE TABLE IF NOT EXISTS messages (
+                id SERIAL PRIMARY KEY,
+                tenant_id VARCHAR(255) REFERENCES tenants(id) ON DELETE CASCADE,
+                from_number VARCHAR(100) NOT NULL,
+                to_number VARCHAR(100) NOT NULL,
+                is_from_me BOOLEAN NOT NULL DEFAULT false,
+                body TEXT,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            );
+        `);
+
         await client.query(`
             INSERT INTO users (username, password_hash, role)
             VALUES ('master', '$2b$10$kdQ0.3Nneuj3ZWEG0YaAx.EK86oyowmg0mKskt0MyVwUYW/b6meDy', 'master')
@@ -39,7 +51,6 @@ const initDB = async () => {
     }
 };
 
-// Don't crash if no DB URL locally, let it be handled when deployed
 if (process.env.DATABASE_URL) {
     initDB().catch(err => console.error("DB Init Error:", err));
 }
@@ -56,20 +67,59 @@ const getTenant = async (id) => {
 };
 
 const upsertTenant = async (tenant) => {
-    const sql = `
-        INSERT INTO tenants (id, name, api_key, system_prompt, bot_active) 
-        VALUES ($1, $2, $3, $4, $5)
-        ON CONFLICT (id) DO UPDATE SET 
-        name=EXCLUDED.name, api_key=EXCLUDED.api_key, system_prompt=EXCLUDED.system_prompt, bot_active=EXCLUDED.bot_active
-    `;
-    await pool.query(sql, [tenant.id, tenant.name, tenant.api_key, tenant.system_prompt, tenant.bot_active == 1]);
+    let userId = null;
+    
+    if (tenant.username && tenant.password_hash) {
+        const userRes = await pool.query(`
+            INSERT INTO users (username, password_hash, role) 
+            VALUES ($1, $2, 'tenant')
+            ON CONFLICT (username) DO UPDATE SET password_hash = EXCLUDED.password_hash
+            RETURNING id
+        `, [tenant.username, tenant.password_hash]);
+        userId = userRes.rows[0].id;
+    }
+    
+    if (userId) {
+        const sql = `
+            INSERT INTO tenants (id, user_id, name, api_key, system_prompt, bot_active) 
+            VALUES ($1, $2, $3, $4, $5, $6)
+            ON CONFLICT (id) DO UPDATE SET 
+            user_id=EXCLUDED.user_id, name=EXCLUDED.name, api_key=EXCLUDED.api_key, system_prompt=EXCLUDED.system_prompt, bot_active=EXCLUDED.bot_active
+        `;
+        await pool.query(sql, [tenant.id, userId, tenant.name, tenant.api_key, tenant.system_prompt, tenant.bot_active == 1]);
+    } else {
+        const sql = `
+            INSERT INTO tenants (id, name, api_key, system_prompt, bot_active) 
+            VALUES ($1, $2, $3, $4, $5)
+            ON CONFLICT (id) DO UPDATE SET 
+            name=EXCLUDED.name, api_key=EXCLUDED.api_key, system_prompt=EXCLUDED.system_prompt, bot_active=EXCLUDED.bot_active
+        `;
+        await pool.query(sql, [tenant.id, tenant.name, tenant.api_key, tenant.system_prompt, tenant.bot_active == 1]);
+    }
 };
 
 const deleteTenant = async (id) => {
     await pool.query("DELETE FROM tenants WHERE id = $1", [id]);
 };
 
-module.exports = { pool, getTenants, getTenant, upsertTenant, deleteTenant };
+const setBotActive = async (id, isActive) => {
+    await pool.query("UPDATE tenants SET bot_active = $1 WHERE id = $2", [isActive, id]);
+};
 
+const saveMessage = async (tenantId, fromNumber, toNumber, isFromMe, body) => {
+    await pool.query(`
+        INSERT INTO messages (tenant_id, from_number, to_number, is_from_me, body)
+        VALUES ($1, $2, $3, $4, $5)
+    `, [tenantId, fromNumber, toNumber, isFromMe, body]);
+};
 
+const getMessages = async (tenantId) => {
+    const res = await pool.query(`
+        SELECT * FROM messages 
+        WHERE tenant_id = $1 
+        ORDER BY created_at ASC
+    `, [tenantId]);
+    return res.rows;
+};
 
+module.exports = { pool, getTenants, getTenant, upsertTenant, deleteTenant, setBotActive, saveMessage, getMessages };

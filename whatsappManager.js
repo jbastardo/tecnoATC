@@ -86,9 +86,12 @@ const logoutSession = async (tenantId) => {
     }
 };
 
-module.exports = { initializeSession, getSessionStatus, logoutSession };
+const sendMessageToNumber = async (tenantId, toNumber, body) => {
+    if (!sessions.has(tenantId)) throw new Error('Session not found');
+    const session = sessions.get(tenantId);
+    if (!session.client || session.status !== 'CONNECTED') throw new Error('Client not connected');
+    const chatId = toNumber.includes('@') ? toNumber : `${toNumber}@c.us`;
+    await session.client.sendMessage(chatId, body);
+};
 
-
-
-
-
+module.exports = { initializeSession, getSessionStatus, logoutSession, sendMessageToNumber };

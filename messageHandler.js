@@ -1,27 +1,22 @@
 const { generateResponse } = require('./aiService');
+const { saveMessage } = require('./database');
 
 const pausedChats = new Map();
-
-const simulateTypingDelay = async (chat) => {
-    const delay = Math.floor(Math.random() * 3000) + 2000; 
-    await chat.sendStateTyping();
-    return new Promise(resolve => setTimeout(resolve, delay));
-};
 
 const handleMessage = async (msg, tenantConfig) => {
     try {
         if (msg.from === 'status@broadcast' || msg.id.fromMe) return;
-
         if (!msg.body || typeof msg.body !== 'string') return;
-        // getChat() disabled due to WA Web bug
-        // const chat = await msg.getChat();
         if (msg.from.endsWith('@g.us')) return;
 
         const chatId = `${tenantConfig.id}_${msg.from}`;
 
+        // Save incoming message
+        await saveMessage(tenantConfig.id, msg.from, 'bot', false, msg.body);
+
         if (msg.body.trim().toLowerCase() === '/resumir') {
             pausedChats.delete(chatId);
-            await msg.reply("âœ… Chat despausado. El bot volverÃ¡ a responder.");
+            await msg.reply("? Chat despausado. El bot volverá a responder.");
             return;
         }
 
@@ -32,23 +27,26 @@ const handleMessage = async (msg, tenantConfig) => {
 
         console.log(`[Mensaje Entrante - ${tenantConfig.name}] de ${msg.from}: ${msg.body}`);
 
-        // await simulateTypingDelay(chat);
+        // If bot is inactive, do not generate AI response
+        if (!tenantConfig.bot_active) {
+            console.log(`[Bot Inactivo - ${tenantConfig.name}] No se genera respuesta.`);
+            return;
+        }
 
-        const context = "AÃºn no tenemos base de datos de contexto.";
-        
+        const context = "Aún no tenemos base de datos de contexto.";
         const aiResponse = await generateResponse(msg.body, tenantConfig, context);
-
-        // await chat.clearState();
 
         if (aiResponse.includes('[REQUIERE_HUMANO]')) {
             pausedChats.set(chatId, true);
-            const pauseMsg = "Entiendo. Por la naturaleza de tu consulta, te transferirÃ© con un agente humano para que te ayude con esto. Por favor, espera un momento.";
+            const pauseMsg = "Entiendo. Por la naturaleza de tu consulta, te transferiré con un agente humano para que te ayude con esto. Por favor, espera un momento.";
             await msg.reply(pauseMsg);
-            console.log(`[IntervenciÃ³n Humana Solicitada] Chat ${chatId} pausado.`);
+            await saveMessage(tenantConfig.id, 'bot', msg.from, true, pauseMsg);
+            console.log(`[Intervención Humana Solicitada] Chat ${chatId} pausado.`);
             return;
         }
 
         await msg.reply(aiResponse);
+        await saveMessage(tenantConfig.id, 'bot', msg.from, true, aiResponse);
         console.log(`[Respuesta Enviada - ${tenantConfig.name}]: ${aiResponse}`);
 
     } catch (error) {
@@ -56,4 +54,4 @@ const handleMessage = async (msg, tenantConfig) => {
     }
 };
 
-module.exports = { handleMessage };
+module.exports = { handleMessage, pausedChats };
