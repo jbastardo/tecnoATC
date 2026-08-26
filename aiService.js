@@ -20,7 +20,7 @@ ${context}
         }
 
         const response = await ai.models.generateContent({
-            model: 'gemini-1.5-flash',
+            model: 'gemini-1.5-flash-latest',
             contents: [
                 { role: 'user', parts: userParts }
             ],
