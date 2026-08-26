@@ -32,7 +32,7 @@ ${context}
     } catch (error) {
         console.error("Error generating AI response:", error);
         require('fs').appendFileSync(require('path').join(__dirname, 'public', 'debug.log'), new Date().toISOString() + ' AI Error: ' + error.message + '\n');
-        return "Lo siento, en este momento estoy teniendo problemas técnicos.";
+        return "Error técnico de Gemini: " + error.message;
     }
 }
 
