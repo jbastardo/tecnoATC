@@ -12,6 +12,7 @@
         .btn-logout { background: #dc3545; color: white; }
         .btn-primary { background: #1a73e8; color: white; }
         .btn-danger { background: #dc3545; color: white; }
+        .btn-edit { background: #ffc107; color: black; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer; }
         .btn-success { background: #28a745; color: white; }
         .card { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); margin-bottom: 20px; }
         table { width: 100%; border-collapse: collapse; margin-top: 15px; }
@@ -105,8 +106,10 @@
             window.location.href = '/';
         }
 
+        window.allTenants = [];
         async function loadTenants() {
             const data = await api('/api/tenants');
+            window.allTenants = data;
             const tbody = document.getElementById('tenantsTable');
             tbody.innerHTML = '';
             
@@ -124,6 +127,7 @@
                     <td>${t.bot_active ? '✅ Sí' : '❌ No'}</td>
                     <td>
                         <button class="btn btn-success" onclick="startSession('${t.id}')">Escanear QR</button>
+                        <button class="btn btn-edit" onclick="editTenant('${t.id}')">Editar</button>
                         <button class="btn btn-danger" onclick="deleteTenant('${t.id}')">Eliminar</button>
                     </td>
                 `;
@@ -151,8 +155,41 @@
             
             alert("Cliente guardado correctamente");
             loadTenants();
-            document.getElementById('tenantForm').reset();
+            cancelEdit();
         });
+
+        
+        function editTenant(id) {
+            const tenant = window.allTenants.find(t => t.id === id);
+            if (!tenant) return;
+            document.getElementById('t_id').value = tenant.id;
+            document.getElementById('t_id').readOnly = true;
+            document.getElementById('t_name').value = tenant.name || '';
+            document.getElementById('t_apikey').value = tenant.api_key || '';
+            document.getElementById('t_prompt').value = tenant.system_prompt || '';
+            document.getElementById('t_active').checked = tenant.bot_active;
+            document.getElementById('t_username').value = '';
+            document.getElementById('t_password').value = '';
+            
+            if (!document.getElementById('cancelEditBtn')) {
+                const btn = document.createElement('button');
+                btn.id = 'cancelEditBtn';
+                btn.type = 'button';
+                btn.className = 'btn btn-danger';
+                btn.style.marginLeft = '10px';
+                btn.innerText = 'Cancelar Edici�n';
+                btn.onclick = cancelEdit;
+                document.querySelector('#tenantForm button[type="submit"]').after(btn);
+            }
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
+        function cancelEdit() {
+            document.getElementById('tenantForm').reset();
+            document.getElementById('t_id').readOnly = false;
+            const btn = document.getElementById('cancelEditBtn');
+            if (btn) btn.remove();
+        }
 
         async function deleteTenant(id) {
             if(confirm('¿Seguro que deseas eliminar este cliente? Se borrará su sesión.')) {
