@@ -3,79 +3,63 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>tecnoATC - Panel de Administración</title>
-    <link rel="stylesheet" href="style.css">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <title>Login - OnProtec AI</title>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f0f2f5; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }
+        .login-box { background: white; padding: 40px; border-radius: 10px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); width: 100%; max-width: 350px; text-align: center; }
+        .login-box h2 { margin-bottom: 20px; color: #1a73e8; }
+        .login-box input { width: 90%; padding: 12px; margin-bottom: 15px; border: 1px solid #ccc; border-radius: 5px; font-size: 14px; }
+        .login-box button { width: 100%; padding: 12px; background-color: #1a73e8; color: white; border: none; border-radius: 5px; font-size: 16px; cursor: pointer; transition: background 0.3s; }
+        .login-box button:hover { background-color: #1557b0; }
+        .error { color: red; margin-bottom: 15px; font-size: 14px; display: none; }
+    </style>
 </head>
 <body>
-    <div class="app-container">
-        <header>
-            <h1>tecnoATC</h1>
-            <p>Plataforma Multi-Cliente de IA para WhatsApp</p>
-        </header>
-
-        <main>
-            <div class="sidebar">
-                <button id="newTenantBtn" class="primary-btn">+ Nuevo Cliente</button>
-                <ul id="tenantList">
-                    <!-- Clientes cargados dinámicamente -->
-                </ul>
-            </div>
-
-            <div class="content" id="tenantContent" style="display: none;">
-                <div class="panel glass-panel">
-                    <div class="panel-header">
-                        <h2 id="tName">Nombre del Cliente</h2>
-                        <span id="tStatus" class="status-badge">Desconectado</span>
-                    </div>
-
-                    <div class="layout-grid">
-                        <div class="config-section">
-                            <h3>Configuración de IA</h3>
-                            <form id="configForm">
-                                <input type="hidden" id="fId">
-                                <div class="form-group">
-                                    <label>Nombre del Cliente</label>
-                                    <input type="text" id="fName" required>
-                                </div>
-                                <div class="form-group">
-                                    <label>Gemini API Key</label>
-                                    <input type="password" id="fApiKey" required placeholder="AIzaSy...">
-                                </div>
-                                <div class="form-group">
-                                    <label>Prompt del Sistema (Personalidad)</label>
-                                    <textarea id="fPrompt" rows="5" required placeholder="Eres un asistente amigable..."></textarea>
-                                </div>
-                                <div class="form-group checkbox-group">
-                                    <input type="checkbox" id="fActive">
-                                    <label for="fActive">Bot Activado</label>
-                                </div>
-                                <div class="actions">
-                                    <button type="submit" class="save-btn">Guardar Configuración</button>
-                                    <button type="button" class="danger-btn" id="deleteBtn">Eliminar Cliente</button>
-                                </div>
-                            </form>
-                        </div>
-
-                        <div class="whatsapp-section">
-                            <h3>Conexión WhatsApp</h3>
-                            <div class="qr-container" id="qrContainer">
-                                <p class="text-muted">Inicia la sesión para ver el QR</p>
-                            </div>
-                            <div class="wa-actions">
-                                <button id="startSessionBtn" class="action-btn">Iniciar Sesión / Generar QR</button>
-                                <button id="logoutSessionBtn" class="danger-btn">Cerrar Sesión (Logout)</button>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-            
-            <div class="empty-state" id="emptyState">
-                <p>Selecciona o crea un cliente para comenzar</p>
-            </div>
-        </main>
+    <div class="login-box">
+        <h2>OnProtec AI</h2>
+        <p>Inicia sesión en tu panel</p>
+        <div id="errorMsg" class="error">Usuario o contraseña incorrectos</div>
+        <form id="loginForm">
+            <input type="text" id="username" placeholder="Usuario" required>
+            <input type="password" id="password" placeholder="Contraseña" required>
+            <button type="submit">Ingresar</button>
+        </form>
     </div>
-    <script src="script.js"></script>
+
+    <script>
+        // Si ya hay token, redirigir
+        const token = localStorage.getItem('token');
+        const role = localStorage.getItem('role');
+        if (token) {
+            window.location.href = role === 'master' ? '/dashboard.html' : '/tenant.html';
+        }
+
+        document.getElementById('loginForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const username = document.getElementById('username').value;
+            const password = document.getElementById('password').value;
+            
+            try {
+                const res = await fetch('/api/auth/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username, password })
+                });
+                const data = await res.json();
+                
+                if (res.ok) {
+                    localStorage.setItem('token', data.token);
+                    localStorage.setItem('role', data.role);
+                    window.location.href = data.role === 'master' ? '/dashboard.html' : '/tenant.html';
+                } else {
+                    const errEl = document.getElementById('errorMsg');
+                    errEl.innerText = data.error || 'Error de autenticación';
+                    errEl.style.display = 'block';
+                }
+            } catch (err) {
+                console.error(err);
+            }
+        });
+    </script>
 </body>
 </html>

@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Master Dashboard - OnProtec AI</title>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f0f2f5; margin: 0; padding: 20px; }
+        .header { display: flex; justify-content: space-between; align-items: center; background: white; padding: 15px 30px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); margin-bottom: 20px; }
+        .header h1 { margin: 0; color: #1a73e8; }
+        .btn { padding: 8px 16px; border: none; border-radius: 4px; cursor: pointer; font-size: 14px; transition: 0.2s; }
+        .btn-logout { background: #dc3545; color: white; }
+        .btn-primary { background: #1a73e8; color: white; }
+        .btn-danger { background: #dc3545; color: white; }
+        .btn-success { background: #28a745; color: white; }
+        .card { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); margin-bottom: 20px; }
+        table { width: 100%; border-collapse: collapse; margin-top: 15px; }
+        th, td { text-align: left; padding: 12px; border-bottom: 1px solid #ddd; }
+        th { background-color: #f8f9fa; }
+        .form-group { margin-bottom: 15px; }
+        .form-group label { display: block; margin-bottom: 5px; font-weight: 500; }
+        .form-group input, .form-group textarea { width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; }
+        .form-group textarea { resize: vertical; height: 100px; }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>OnProtec AI - Panel de Administración</h1>
+        <button class="btn btn-logout" onclick="logout()">Cerrar Sesión</button>
+    </div>
+
+    <div class="card">
+        <h2>Crear/Editar Cliente (Tenant)</h2>
+        <form id="tenantForm">
+            <div class="form-group">
+                <label>ID del Tenant (Opcional, se genera auto si está vacío)</label>
+                <input type="text" id="t_id" placeholder="Ej: cliente-123">
+            </div>
+            <div class="form-group">
+                <label>Nombre del Cliente</label>
+                <input type="text" id="t_name" required>
+            </div>
+            <div class="form-group">
+                <label>API Key (No usado por ahora, déjalo vacío o pon algo)</label>
+                <input type="text" id="t_apikey">
+            </div>
+            <div class="form-group">
+                <label>System Prompt (Instrucciones para la IA)</label>
+                <textarea id="t_prompt" required>Eres un asistente virtual...</textarea>
+            </div>
+            <div class="form-group">
+                <label>
+                    <input type="checkbox" id="t_active"> IA Activada (Piloto Automático)
+                </label>
+            </div>
+            <button type="submit" class="btn btn-primary">Guardar Cliente</button>
+        </form>
+    </div>
+
+    <div class="card">
+        <h2>Lista de Clientes</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Nombre</th>
+                    <th>Estado de Sesión</th>
+                    <th>IA Activa</th>
+                    <th>Acciones</th>
+                </tr>
+            </thead>
+            <tbody id="tenantsTable">
+                <tr><td colspan="5">Cargando...</td></tr>
+            </tbody>
+        </table>
+    </div>
+
+    <script>
+        const token = localStorage.getItem('token');
+        if (!token) window.location.href = '/';
+
+        const api = async (url, options = {}) => {
+            options.headers = {
+                ...options.headers,
+                'Authorization': `Bearer ${token}`
+            };
+            const res = await fetch(url, options);
+            if (res.status === 401 || res.status === 403) {
+                logout();
+            }
+            return res.json();
+        };
+
+        function logout() {
+            localStorage.removeItem('token');
+            localStorage.removeItem('role');
+            window.location.href = '/';
+        }
+
+        async function loadTenants() {
+            const data = await api('/api/tenants');
+            const tbody = document.getElementById('tenantsTable');
+            tbody.innerHTML = '';
+            
+            if(data.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="5">No hay clientes registrados.</td></tr>';
+                return;
+            }
+
+            data.forEach(t => {
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td>${t.id}</td>
+                    <td>${t.name}</td>
+                    <td><b>${t.status}</b></td>
+                    <td>${t.bot_active ? '✅ Sí' : '❌ No'}</td>
+                    <td>
+                        <button class="btn btn-success" onclick="startSession('${t.id}')">Escanear QR</button>
+                        <button class="btn btn-danger" onclick="deleteTenant('${t.id}')">Eliminar</button>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        document.getElementById('tenantForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const payload = {
+                id: document.getElementById('t_id').value,
+                name: document.getElementById('t_name').value,
+                api_key: document.getElementById('t_apikey').value,
+                system_prompt: document.getElementById('t_prompt').value,
+                bot_active: document.getElementById('t_active').checked
+            };
+            
+            await api('/api/tenants', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+            
+            alert("Cliente guardado correctamente");
+            loadTenants();
+            document.getElementById('tenantForm').reset();
+        });
+
+        async function deleteTenant(id) {
+            if(confirm('¿Seguro que deseas eliminar este cliente? Se borrará su sesión.')) {
+                await api(`/api/tenants/${id}`, { method: 'DELETE' });
+                loadTenants();
+            }
+        }
+
+        async function startSession(id) {
+            await api(`/api/sessions/start/${id}`, { method: 'POST' });
+            // In a real app, we'd open a modal and poll for the QR for this specific ID
+            alert("Iniciando sesión... Para ver el QR por ahora tendríamos que hacer la ventana modal, esto se añadirá pronto.");
+            loadTenants();
+        }
+
+        loadTenants();
+    </script>
+</body>
+</html>
