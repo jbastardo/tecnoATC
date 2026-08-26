@@ -38,12 +38,12 @@ const JWT_SECRET = process.env.JWT_SECRET || 'supersecretkey_change_in_prod';
 app.post('/api/auth/login', async (req, res) => {
     const { username, password } = req.body;
     try {
-        const result = await pool.query('SELECT * FROM users WHERE username = app.use(express.static(path.join(__dirname, 'public')));', [username]);
-        if (result.rows.length === 0) return res.status(401).json({ error: "Usuario o contraseña incorrectos" });
+        const result = await pool.query('SELECT * FROM users WHERE username = 1', [username]);
+        if (result.rows.length === 0) return res.status(401).json({ error: "Usuario o contraseï¿½a incorrectos" });
         
         const user = result.rows[0];
         const validPassword = await bcrypt.compare(password, user.password_hash);
-        if (!validPassword) return res.status(401).json({ error: "Usuario o contraseña incorrectos" });
+        if (!validPassword) return res.status(401).json({ error: "Usuario o contraseï¿½a incorrectos" });
         
         const token = jwt.sign({ username: user.username, role: user.role }, JWT_SECRET, { expiresIn: '24h' });
         res.json({ token, role: user.role });
