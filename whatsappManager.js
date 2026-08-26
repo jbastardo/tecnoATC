@@ -17,15 +17,7 @@ const initializeSession = async (tenantId) => {
     const path = require('path');
     const authPath = path.join(__dirname, '.wwebjs_auth', `session-$tenantId`);
     try {
-        const cleanRecursive = (dir) => {
-            if (!fs.existsSync(dir)) return;
-            for (const f of fs.readdirSync(dir)) {
-                const full = path.join(dir, f);
-                if (fs.statSync(full).isDirectory()) cleanRecursive(full);
-                else if (f.startsWith('Singleton')) fs.unlinkSync(full);
-            }
-        };
-        cleanRecursive(authPath);
+        require('child_process').execSync('find ' + authPath + ' -name "Singleton*" -delete');
     } catch(e) {}
 
     const client = new Client({
@@ -95,6 +87,7 @@ const logoutSession = async (tenantId) => {
 };
 
 module.exports = { initializeSession, getSessionStatus, logoutSession };
+
 
 
 
