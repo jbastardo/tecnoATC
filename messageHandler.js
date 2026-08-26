@@ -6,17 +6,50 @@ const pausedChats = new Map();
 const handleMessage = async (msg, tenantConfig) => {
     try {
         if (msg.from === 'status@broadcast' || msg.id.fromMe) return;
-        if (!msg.body || typeof msg.body !== 'string') return;
+        if (!msg.body && !msg.hasMedia) return;
         if (msg.from.endsWith('@g.us')) return;
 
         const chatId = `${tenantConfig.id}_${msg.from}`;
+        
+        let mediaUrl = null;
+        let mediaData = null;
+        if (msg.hasMedia) {
+            try {
+                const media = await msg.downloadMedia();
+                if (media) {
+                    const ext = media.mimetype.split('/')[1].split(';')[0] || 'bin';
+                    const filename = `media_${Date.now()}.${ext}`;
+                    const path = require('path');
+                    const uploadDir = path.join(__dirname, 'public', 'uploads');
+                    const fsSync = require('fs');
+                    if (!fsSync.existsSync(uploadDir)) fsSync.mkdirSync(uploadDir, { recursive: true });
+                    fsSync.writeFileSync(path.join(uploadDir, filename), media.data, 'base64');
+                    mediaUrl = '/uploads/' + filename;
+                    
+                    mediaData = {
+                        inlineData: {
+                            data: media.data,
+                            mimeType: media.mimetype
+                        }
+                    };
+                }
+            } catch(e) { console.error("Error downloading media", e); }
+        }
+
+        let contactName = null;
+        try {
+            const contact = await msg.getContact();
+            contactName = contact.pushname || contact.name || msg.from.split('@')[0];
+        } catch(e) {}
+
+        const bodyText = msg.body || '';
 
         // Save incoming message
-        await saveMessage(tenantConfig.id, msg.from, 'bot', false, msg.body);
+        await saveMessage(tenantConfig.id, msg.from, 'bot', false, bodyText, mediaUrl, contactName);
 
-        if (msg.body.trim().toLowerCase() === '/resumir') {
+        if (bodyText.trim().toLowerCase() === '/resumir') {
             pausedChats.delete(chatId);
-            await msg.reply("? Chat despausado. El bot volverá a responder.");
+            await msg.reply("? Chat despausado. El bot volverï¿½ a responder.");
             return;
         }
 
@@ -25,7 +58,7 @@ const handleMessage = async (msg, tenantConfig) => {
             return;
         }
 
-        console.log(`[Mensaje Entrante - ${tenantConfig.name}] de ${msg.from}: ${msg.body}`);
+        console.log(`[Mensaje Entrante - ${tenantConfig.name}] de ${msg.from}: ${bodyText} ${mediaUrl ? '[IMAGE]' : ''}`);
 
         // If bot is inactive, do not generate AI response
         if (!tenantConfig.bot_active) {
@@ -33,15 +66,15 @@ const handleMessage = async (msg, tenantConfig) => {
             return;
         }
 
-        const context = "Aún no tenemos base de datos de contexto.";
-        const aiResponse = await generateResponse(msg.body, tenantConfig, context);
+        const context = "Aï¿½n no tenemos base de datos de contexto.";
+        const aiResponse = await generateResponse(bodyText, tenantConfig, context, mediaData);
 
         if (aiResponse.includes('[REQUIERE_HUMANO]')) {
             pausedChats.set(chatId, true);
-            const pauseMsg = "Entiendo. Por la naturaleza de tu consulta, te transferiré con un agente humano para que te ayude con esto. Por favor, espera un momento.";
+            const pauseMsg = "Entiendo. Por la naturaleza de tu consulta, te transferirï¿½ con un agente humano para que te ayude con esto. Por favor, espera un momento.";
             await msg.reply(pauseMsg);
             await saveMessage(tenantConfig.id, 'bot', msg.from, true, pauseMsg);
-            console.log(`[Intervención Humana Solicitada] Chat ${chatId} pausado.`);
+            console.log(`[Intervenciï¿½n Humana Solicitada] Chat ${chatId} pausado.`);
             return;
         }
 

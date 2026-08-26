@@ -1,6 +1,6 @@
 const { GoogleGenAI } = require('@google/genai');
 
-async function generateResponse(prompt, tenantConfig, context = "") {
+async function generateResponse(prompt, tenantConfig, context = "", mediaData = null) {
     try {
         const ai = new GoogleGenAI({ apiKey: tenantConfig.api_key });
 
@@ -10,11 +10,17 @@ REGLA CRÍTICA: Si el cliente pregunta sobre el estado de un envío, rastreo de 
 Utiliza la siguiente información de contexto para responder la pregunta, si es relevante:
 ${context}
 `;
+        
+        const userParts = [];
+        if (mediaData) userParts.push(mediaData);
+        if (prompt) userParts.push({ text: prompt });
+        if (userParts.length === 0) userParts.push({ text: "El usuario envió una imagen." });
+
         const response = await ai.models.generateContent({
-            model: 'gemini-3.6-flash',
+            model: 'gemini-1.5-flash',
             contents: [
                 { role: 'user', parts: [{ text: systemPrompt }] }, 
-                { role: 'user', parts: [{ text: prompt }] }
+                { role: 'user', parts: userParts }
             ]
         });
         return response.text;

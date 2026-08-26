@@ -55,7 +55,7 @@
         <h1>OnProtec AI - Chat Panel</h1>
         <div>
             <span style="margin-right: 20px; font-size: 14px;" id="tenantNameDisplay"></span>
-            <button class="btn-logout" onclick="logout()">Cerrar Sesión</button>
+            <button class="btn-logout" onclick="logout()">Cerrar Sesiï¿½n</button>
         </div>
     </div>
 
@@ -72,7 +72,7 @@
         <div class="chat-area" id="chatArea">
             <div class="empty-state" id="emptyState">
                 <h3>Bienvenido a tu panel de Chat</h3>
-                <p>Selecciona una conversación a la izquierda para comenzar o intervenir.</p>
+                <p>Selecciona una conversaciï¿½n a la izquierda para comenzar o intervenir.</p>
             </div>
         </div>
     </div>
@@ -139,7 +139,7 @@
             const contacts = getContacts();
             
             if (contacts.length === 0) {
-                list.innerHTML = '<div style="padding: 20px; text-align: center; color: #888;">No hay mensajes aún.</div>';
+                list.innerHTML = '<div style="padding: 20px; text-align: center; color: #888;">No hay mensajes aï¿½n.</div>';
                 return;
             }
 
@@ -150,7 +150,7 @@
                 div.onclick = () => selectContact(c.id);
                 
                 const isFromMe = c.lastMsg.is_from_me;
-                const preview = (isFromMe ? 'Tú: ' : '') + (c.lastMsg.body.substring(0, 30) + (c.lastMsg.body.length > 30 ? '...' : ''));
+                const preview = (isFromMe ? 'Tï¿½: ' : '') + (c.lastMsg.body.substring(0, 30) + (c.lastMsg.body.length > 30 ? '...' : ''));
                 
                 const date = new Date(c.lastMsg.created_at);
                 const timeStr = date.getHours().toString().padStart(2, '0') + ':' + date.getMinutes().toString().padStart(2, '0');
@@ -159,7 +159,7 @@
                     <div class="contact-avatar">${c.id.substring(0, 2)}</div>
                     <div class="contact-info">
                         <div style="display: flex; justify-content: space-between;">
-                            <div class="contact-name">+${c.id}</div>
+                            <div class="contact-name">${c.lastMsg.contact_name || '+' + c.id}</div>
                             <div style="font-size: 11px; color: #999;">${timeStr}</div>
                         </div>
                         <div class="contact-preview">${preview}</div>
@@ -183,10 +183,10 @@
                 <div class="chat-header">
                     <div class="chat-header-info">
                         <div class="contact-avatar" style="width: 35px; height: 35px;">${id.substring(0,2)}</div>
-                        <h2>+${id}</h2>
+                        <h2>${messages.length > 0 && messages[0].contact_name ? messages[0].contact_name : '+' + id}</h2>
                     </div>
                     <div class="ai-status">
-                        <span style="color: #666; font-size: 12px; margin-right: 10px;">(Si respondes manualmente, la IA se pausará)</span>
+                        <span style="color: #666; font-size: 12px; margin-right: 10px;">(Si respondes manualmente, la IA se pausarï¿½)</span>
                     </div>
                 </div>
                 <div class="messages-container" id="messagesContainer">
@@ -199,7 +199,9 @@
                 
                 html += `
                     <div class="message ${msgClass}">
-                        <div>${m.body.replace(/\n/g, '<br>')}</div>
+                        
+                        ${m.media_url ? '<img src="' + m.media_url + '" style="max-width: 100%; border-radius: 8px; margin-bottom: 5px;">' : ''}
+                        <div>${m.body ? m.body.replace(/\n/g, '<br>') : ''}</div>
                         <div class="message-time">${timeStr}</div>
                     </div>
                 `;

@@ -38,6 +38,10 @@ const initDB = async () => {
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             );
         `);
+        
+        // Add new columns if they don't exist
+        await client.query(`ALTER TABLE messages ADD COLUMN IF NOT EXISTS media_url TEXT;`);
+        await client.query(`ALTER TABLE messages ADD COLUMN IF NOT EXISTS contact_name VARCHAR(255);`);
 
         await client.query(`
             INSERT INTO users (username, password_hash, role)
@@ -106,11 +110,11 @@ const setBotActive = async (id, isActive) => {
     await pool.query("UPDATE tenants SET bot_active = $1 WHERE id = $2", [isActive, id]);
 };
 
-const saveMessage = async (tenantId, fromNumber, toNumber, isFromMe, body) => {
+const saveMessage = async (tenantId, fromNumber, toNumber, isFromMe, body, mediaUrl = null, contactName = null) => {
     await pool.query(`
-        INSERT INTO messages (tenant_id, from_number, to_number, is_from_me, body)
-        VALUES ($1, $2, $3, $4, $5)
-    `, [tenantId, fromNumber, toNumber, isFromMe, body]);
+        INSERT INTO messages (tenant_id, from_number, to_number, is_from_me, body, media_url, contact_name)
+        VALUES ($1, $2, $3, $4, $5, $6, $7)
+    `, [tenantId, fromNumber, toNumber, isFromMe, body, mediaUrl, contactName]);
 };
 
 const getMessages = async (tenantId) => {
