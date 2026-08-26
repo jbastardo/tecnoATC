@@ -29,6 +29,46 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
+const jwt = require('jsonwebtoken');
+const bcrypt = require('bcrypt');
+const { pool } = require('./database');
+
+const JWT_SECRET = process.env.JWT_SECRET || 'supersecretkey_change_in_prod';
+
+app.post('/api/auth/login', async (req, res) => {
+    const { username, password } = req.body;
+    try {
+        const result = await pool.query('SELECT * FROM users WHERE username = app.use(express.static(path.join(__dirname, 'public')));', [username]);
+        if (result.rows.length === 0) return res.status(401).json({ error: "Usuario o contraseña incorrectos" });
+        
+        const user = result.rows[0];
+        const validPassword = await bcrypt.compare(password, user.password_hash);
+        if (!validPassword) return res.status(401).json({ error: "Usuario o contraseña incorrectos" });
+        
+        const token = jwt.sign({ username: user.username, role: user.role }, JWT_SECRET, { expiresIn: '24h' });
+        res.json({ token, role: user.role });
+    } catch (err) {
+        console.error('Login error:', err);
+        res.status(500).json({ error: "Error interno del servidor" });
+    }
+});
+
+const authenticateToken = (req, res, next) => {
+    const authHeader = req.headers['authorization'];
+    const token = authHeader && authHeader.split(' ')[1];
+    if (!token) return res.sendStatus(401);
+
+    jwt.verify(token, JWT_SECRET, (err, user) => {
+        if (err) return res.sendStatus(403);
+        req.user = user;
+        next();
+    });
+};
+
+// Protect tenant routes
+app.use('/api/tenants', authenticateToken);
+app.use('/api/sessions', authenticateToken);
+
 
 app.get('/api/tenants', async (req, res) => {
     try {
@@ -101,5 +141,6 @@ const PORT = process.env.PORT || 8012;
 app.listen(PORT, '0.0.0.0', () => {
     console.log(`ðŸš€ Multi-Tenant Server running on port ${PORT}`);
 });
+
 
 
